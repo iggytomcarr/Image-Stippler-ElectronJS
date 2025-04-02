@@ -28,7 +28,6 @@ startButton.addEventListener('click', () => {
     // If a file is selected, continue with your logic
     console.log('File is selected, proceeding...');
 
-
     processImage()
 
 });
@@ -42,6 +41,10 @@ document.getElementById('loadImageButton').addEventListener('click', async () =>
         console.log("Image path -> " + imagePath);
         imagePreview.src = imagePath;
 
+        // Add an onload listener to the image element to get its dimensions
+        imagePreview.onload = () => {
+            console.log(`Image size -> Width: ${imagePreview.width}px, Height: ${imagePreview.height}px`);
+        };
 
     } else {
         console.log('No image selected.')
@@ -53,46 +56,65 @@ document.getElementById('loadImageButton').addEventListener('click', async () =>
 
 saveImageButton.addEventListener('click', () => {
     console.log('Save Image Button Clicked');
+    processImage()
 });
 
 
 function processImage() {
     console.log('Processing Image Function Called');
-
     setup()
 
-
-
-
-
-
 }
+
+// function setup() {
+//
+//     console.log('Image to process path:')
+//     console.log(imagePath)
+//     imageToProcess = loadImage(imagePath)
+//
+//     // setup p5 canvas
+//     const canvas = createCanvas(400, 400); // Adjust dimensions as needed
+//     canvas.parent('imageOutput');
+//
+//     for (let i = 0; i < 1000; i++) {
+//         let x = random(width);
+//         let y = random(height);
+//         let col = imageToProcess.get(x, y);
+//         if (random(100) > brightness(col)) {
+//             points.push(createVector(x, y));
+//         } else {
+//             i--;
+//         }
+//     }
+//
+//     delaunay = calculateDelaunay(points);
+//     voronoi = delaunay.voronoi([0, 0, width, height]);
+//
+// }
 
 function setup() {
+    console.log('Image to process path:');
+    console.log(imagePath);
 
-    console.log('Image to process path:')
-    console.log(imagePath)
-    imageToProcess = loadImage(imagePath)
+    imageToProcess = loadImage(imagePath, img => {
+        // Keep original dimensions
+        let originalWidth = img.width;
+        let originalHeight = img.height;
 
-    // setup p5 canvas
-    const canvas = createCanvas(400, 400); // Adjust dimensions as needed
-    canvas.parent('imageOutput');
+        // Calculate scale to fit in 400x400
+        let scaleFactor = min(400 / originalWidth, 400 / originalHeight);
+        let displayWidth = originalWidth * scaleFactor;
+        let displayHeight = originalHeight * scaleFactor;
 
-    for (let i = 0; i < 1000; i++) {
-        let x = random(width);
-        let y = random(height);
-        let col = imageToProcess.get(x, y);
-        if (random(100) > brightness(col)) {
-            points.push(createVector(x, y));
-        } else {
-            i--;
-        }
-    }
+        // Setup p5.js canvas
+        const canvas = createCanvas(400, 400);
+        canvas.parent('imageOutput');
 
-    delaunay = calculateDelaunay(points);
-    voronoi = delaunay.voronoi([0, 0, width, height]);
-
+        // Resize image for preview
+        image(img, 0, 0, displayWidth, displayHeight);
+    });
 }
+
 
 function draw() {
     background(255);
@@ -162,7 +184,7 @@ function draw() {
         let col = imageToProcess.get(v.x, v.y);
         stroke(col);
         //stroke(0);
-        let sw = map(avgWeights[i], 0, maxWeight, 1, 14, true);
+        let sw = map(avgWeights[i], 0, maxWeight, 5, 25, true);
         //sw = 4;
         strokeWeight(sw);
         point(v.x, v.y);
@@ -174,8 +196,39 @@ function draw() {
 
 function calculateDelaunay(points) {
     let pointsArray = [];
+
     for (let v of points) {
         pointsArray.push(v.x, v.y);
     }
+
     return new d3.Delaunay(pointsArray);
+}
+
+function processImage() {
+    console.log('Processing Image Function Called');
+
+    // Define high-res canvas (e.g., 2000x2000)
+    let highResCanvas = createGraphics(2000, 2000);
+    highResCanvas.background(255);
+
+    let scaleFactor = 2000 / 400;  // Scale up points for high resolution
+
+    for (let i = 0; i < points.length; i++) {
+        let v = points[i];
+        let col = imageToProcess.get(v.x, v.y);
+
+        // Scale points for high-res output
+        let scaledX = v.x * scaleFactor;
+        let scaledY = v.y * scaleFactor;
+
+        highResCanvas.stroke(col);
+        let sw = map(avgWeights[i], 0, maxWeight, 2, 34, true);
+        highResCanvas.strokeWeight(sw * scaleFactor);
+        highResCanvas.point(scaledX, scaledY);
+    }
+
+    // Save high-res image
+    highResCanvas.save('stippling_output.png');
+
+    console.log('High-Resolution Stippling Complete');
 }
